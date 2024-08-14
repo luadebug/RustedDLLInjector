@@ -1,14 +1,18 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
-
+use std::ffi::{CStr, CString};
+use std::io::Error;
+use std::path::{Path, PathBuf};
+use dll_syringe::process::{BorrowedProcessModule, OwnedProcess};
 use eframe::{Frame, Storage};
 use eframe::epaint::{FontFamily, FontId};
 use eframe::epaint::FontFamily::Proportional;
 use eframe::epaint::text::{FontData, FontDefinitions};
-use egui::{ComboBox, Id, PointerButton, popup_below_widget, Style, TextEdit};
+use egui::{Button, ComboBox, Grid, Id, PointerButton, popup_below_widget, Style, TextEdit, Ui, Vec2};
 use egui::TextStyle::{Body as BodyStyle, Button as ButtonStyle, Heading as HeadingStyle, Monospace as MonospaceStyle, Name as NameStyle, Small as SmallStyle};
-use libmem::{Pid, Process};
-use tracing::info;
+use egui_extras::{Column, TableBuilder};
+use libmem::{Pid, Process, process};
+use tracing::{error, info};
+use crate::DllInfo::{clear_all_dlls, DllInfo, enable_disable_dll, open_file_dialog_and_add_dll, remove_selected_dll};
 use crate::EmojiLabelWidget::EmojiLabelWidget;
 use crate::ProcessSelectionMethod::ProcessSelectionMethod;
 use crate::ProcessSelectionMethod::ProcessSelectionMethod::{ByPID, ByPIDInput, ByProcessName};
@@ -26,7 +30,10 @@ impl Default for InjectorApp {
             process_architecture: "x64".to_owned(),
             process_list: get_process_list(),
             current_process_selected_index: 0,
-            focused_item_index: Some(0)
+            focused_item_index: Some(0),
+            selected_row: None,
+            dll_list_vector: Vec::new(),
+            show_popup_error_dll_already_added: false
         }
     }
 }
@@ -40,7 +47,10 @@ pub struct InjectorApp {
     process_architecture: String,
     process_list: Vec<Process>,
     current_process_selected_index: usize,
-    focused_item_index: Option<usize>
+    focused_item_index: Option<usize>,
+    selected_row: Option<usize>,
+    dll_list_vector: Vec<DllInfo>,
+    show_popup_error_dll_already_added: bool
 }
 
 impl InjectorApp {
@@ -146,260 +156,387 @@ impl InjectorApp {
     }
 }
 
+fn dll_list_table(ui: &mut Ui, selected_row: &mut Option<usize>,
+                  dll_list: &mut Vec<DllInfo>) {
+
+    let c = dll_list.to_owned();
+
+    TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(Column::initial(100.0).at_least(40.0)) // First column
+        .column(Column::remainder().resizable(true))    // Second column
+        .column(Column::remainder().resizable(true))    // Third column
+        .column(Column::remainder().resizable(true))    // Fourth column
+        .header(20.0, |mut header| {
+            header.col(|ui| {
+                ui.label("Switch");
+            });
+            header.col(|ui| {
+                ui.label("DLL Name");
+            });
+            header.col(|ui| {
+                ui.label("DLL Arch");
+            });
+            header.col(|ui| {
+                ui.label("DLL Path");
+            });
+        })
+        .body(|mut body| {
+
+            if dll_list.is_empty() {
+                body.row(18.0, |mut row| {
+                    row.col(|ui| {
+                        ui.label("No DLLs found");
+                    });
+                });
+            }
+            else {
+                for dll in dll_list {
+                    let is_selected = *selected_row == Some(dll.index);
+                    body.row(18.0, |mut row| {
+                        row.col(|ui| {
+                            let response = ui.checkbox(&mut dll.switch, "ON/OFF");
+                            if response.clicked() {
+                                *selected_row = Some(dll.index);
+                            }
+                        });
+                        row.col(|ui| {
+                            let response = ui.selectable_label(is_selected, &dll.dll_name);
+                            if response.clicked() {
+                                *selected_row = Some(dll.index);
+                            }
+                        });
+                        row.col(|ui| {
+                            let response = ui.selectable_label(is_selected, &dll.dll_arch);
+                            if response.clicked() {
+                                *selected_row = Some(dll.index);
+                            }
+                        });
+                        row.col(|ui| {
+                            let response = ui.selectable_label(is_selected, &dll.dll_path);
+                            if response.clicked() {
+                                *selected_row = Some(dll.index);
+                            }
+                        });
+                    });
+                }
+            }
+        });
+
+
+        ui.label(format!("Selected Row: {:?}", selected_row));
+        ui.label(if selected_row.is_some() { format!("{:#?}", &c[selected_row.unwrap() - 1usize]) } else { format!("{:#?}", &DllInfo::default()) });
+}
+
+
+
 impl eframe::App for InjectorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical(|ui| {
-                ui.horizontal(|ui| {
-                    let resp1 = ui.add(EmojiLabelWidget::new("⚙ Process:\t\t\t\t\t\t\t\t\t\t\t\t"));
-                    if resp1.hovered() && self.radio_button_proc_sel_meth == ByProcessName {
-                        let popup_id = Id::new("SelectedProcessNamePopUP");
-                        ui.memory_mut(|mem| mem.open_popup(popup_id));
-                        let _ = popup_below_widget(
-                            ui,
-                            popup_id,
-                            &resp1,
-                            |popup_ui| {
-                                let process = &self.process_list[self.current_process_selected_index];
-                                let process_info = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
-                                                           format!("PID:{:#?}", process.pid),
-                                                           format!("PPID:{:#?}", process.ppid),
-                                                           format!("Architecture:{:#?}", process.arch),
-                                                           format!("Bits:{:#?}", process.bits),
-                                                           format!("Start Time:{:#?}", process.start_time),
-                                                           format!("Path:\n{:#?}", process.path),
-                                                           format!("Name:{:#?}", process.name));
-                                popup_ui.label(process_info);
-                            },
-                        );
-                    }
-
-                    if ui.radio(self.radio_button_proc_sel_meth == ByProcessName,
-                                "".to_owned()).clicked()
-                    {
-                        self.radio_button_proc_sel_meth = ByProcessName;
-                    }
-
-                    let cb1_resp = ComboBox::from_id_source("ProcessListComboBox")
-                        .width(400.0f32)
-                        .selected_text(&self.combo_box_process_name)
-                        .show_ui(ui, |ui| {
-                            // Collect filtered processes
-                            let mut filtered_processes: Vec<&Process> = self.filter_system_services_and_daemon_processes();
-                            filtered_processes.sort_by_key(|process| &process.name);
-                            // Store potential updates here
-                            let mut new_selected_process_name = None;
-                            let mut new_selected_process_index = None;
-
-                            // Iterate over the filtered process list
-                            for process in &filtered_processes {
-                                // Clone the string for selectable_value
-                                let process_name = process.name.to_owned();
-                                let selectable_text = format!("{}\t{}\t{}", process.name, process.pid, process.ppid);
-
-                                if ui.selectable_value(
-                                    &mut self.combo_box_process_name.as_str(), // No longer modifying directly
-                                    process_name.as_str(),
-                                    selectable_text.as_str()
-                                ).clicked() && self.radio_button_proc_sel_meth == ByProcessName {
-
-                                    // Store potential update
-                                    new_selected_process_name = Some(process.name.to_owned());
-                                    new_selected_process_index = Some(self.process_list.iter()
-                                        .position(|x| x.pid == process.pid)
-                                        .unwrap());
-                                }
-                            }
-
-                            // Update after the loop
-                            if let Some(name) = new_selected_process_name {
-                                self.combo_box_process_name = name;
-                            }
-
-                            if let Some(index) = new_selected_process_index {
-                                self.current_process_selected_index = index;
-                            }
-                        }).response;
-                    if cb1_resp.clicked_by(PointerButton::Primary) && self.radio_button_proc_sel_meth == ByProcessName
-                    {
-                        self.process_list = get_process_list();
-                    }
-                });
+            ui.horizontal(|ui| {
 
 
-                ui.horizontal(|ui| {
-                    //ui.label("\u{2699} PID:\t\t\t");
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        let resp1 = ui.add(EmojiLabelWidget::new("⚙ Process:\t\t\t\t\t\t\t\t\t\t\t\t"));
+                        if resp1.hovered() && self.radio_button_proc_sel_meth == ByProcessName {
+                            let popup_id = Id::new("SelectedProcessNamePopUP");
+                            ui.memory_mut(|mem| mem.open_popup(popup_id));
+                            let _ = popup_below_widget(
+                                ui,
+                                popup_id,
+                                &resp1,
+                                |popup_ui| {
+                                    let process = &self.process_list[self.current_process_selected_index];
+                                    let process_info = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
+                                                               format!("PID:{:#?}", process.pid),
+                                                               format!("PPID:{:#?}", process.ppid),
+                                                               format!("Architecture:{:#?}", process.arch),
+                                                               format!("Bits:{:#?}", process.bits),
+                                                               format!("Start Time:{:#?}", process.start_time),
+                                                               format!("Path:\n{:#?}", process.path),
+                                                               format!("Name:{:#?}", process.name));
+                                    popup_ui.label(process_info);
+                                },
+                            );
+                        }
 
-                    let resp2 = ui.add(EmojiLabelWidget::new("⚙ PID:\t\t\t\t\t\t\t\t\t\t\t\t"));
-                    if resp2.hovered() && self.radio_button_proc_sel_meth == ByPID {
-                        let popup_id = Id::new("SelectedProcessByPIDPopUP");
-                        ui.memory_mut(|mem| mem.open_popup(popup_id));
-                        let _ = popup_below_widget(
-                            ui,
-                            popup_id,
-                            &resp2,
-                            |popup_ui| {
-                                let process = &self.process_list[self.current_process_selected_index];
-                                let process_info = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
-                                                           format!("PID:{:#?}", process.pid),
-                                                           format!("PPID:{:#?}", process.ppid),
-                                                           format!("Architecture:{:#?}", process.arch),
-                                                           format!("Bits:{:#?}", process.bits),
-                                                           format!("Start Time:{:#?}", process.start_time),
-                                                           format!("Path:\n{:#?}", process.path),
-                                                           format!("Name:{:#?}", process.name));
-                                popup_ui.label(process_info);
-                            },
-                        );
-                    }
-
-
-                    if ui.radio(self.radio_button_proc_sel_meth == ByPID,
-                                "".to_owned()).clicked()
-                    {
-                        self.radio_button_proc_sel_meth = ByPID;
-                    }
-                    let cb2_resp = ComboBox::from_id_source("PIDListComboBox").width(400.0f32)
-                        .selected_text(&self.combo_box_pid)
-                        .show_ui(ui, |ui| {
-
-                            // Collect filtered processes
-                            let mut filtered_processes: Vec<&Process> = self.filter_system_services_and_daemon_processes();
-                            filtered_processes.sort_by_key(|process| &process.pid);
-                            // Store potential updates here
-                            let mut new_selected_process_pid = None;
-                            let mut new_selected_process_index = None;
-
-                            for process in &filtered_processes {
-                                let process_pid = process.pid.to_owned();
-                                let selectable_text = format!("{}\t{}\t{}", process.pid, process.name, process.ppid);
-
-                                if ui.selectable_value(&mut self.combo_box_pid.as_str(),
-                                                       process_pid.to_string().as_str(),
-                                                       selectable_text.as_str(),
-                                ).clicked() && self.radio_button_proc_sel_meth == ByPID
-                                {
-                                    // Store potential update
-                                    new_selected_process_pid = Some(process.pid.to_owned());
-                                    new_selected_process_index = Some(self.process_list.iter()
-                                        .position(|x| x.pid == process.pid)
-                                        .unwrap());
-                                }
-                            }
-
-                            // Update after the loop
-                            if let Some(pid) = new_selected_process_pid {
-                                self.combo_box_pid = pid.to_string();
-                            }
-
-                            if let Some(index) = new_selected_process_index {
-                                self.current_process_selected_index = index;
-                            }
-                        }).response;
-
-                    if cb2_resp.clicked_by(PointerButton::Primary) && self.radio_button_proc_sel_meth == ByPID
-                    {
-                        self.process_list = get_process_list();
-                    }
-                });
-                ui.horizontal(|ui| {
-                    //ui.label("📝\u{2699} PID input:\t");
-                    let resp3 = ui.add(EmojiLabelWidget::new("⚙📝 PID input::\t\t\t\t\t\t\t\t\t\t\t\t"));
-                    if resp3.hovered() && self.radio_button_proc_sel_meth == ByPIDInput {
-                        let popup_id = Id::new("SelectedProcessByPIDInputPopUP");
-                        ui.memory_mut(|mem| mem.open_popup(popup_id));
-                        let _ = popup_below_widget(
-                            ui,
-                            popup_id,
-                            &resp3,
-                            |popup_ui| {
-                                let process = &self.process_list[self.current_process_selected_index];
-                                let process_info = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
-                                                           format!("PID:{:#?}", process.pid),
-                                                           format!("PPID:{:#?}", process.ppid),
-                                                           format!("Architecture:{:#?}", process.arch),
-                                                           format!("Bits:{:#?}", process.bits),
-                                                           format!("Start Time:{:#?}", process.start_time),
-                                                           format!("Path:\n{:#?}", process.path),
-                                                           format!("Name:{:#?}", process.name));
-                                popup_ui.label(process_info);
-                            },
-                        );
-                    }
-
-
-
-                    if ui.radio(self.radio_button_proc_sel_meth == ByPIDInput,
-                                "".to_owned()).clicked()
-                    {
-                        self.radio_button_proc_sel_meth = ByPIDInput;
-                    }
-                    let resp = ui.add(TextEdit::singleline(&mut self.text_edit_value)
-                        .char_limit(6)
-                        .desired_width(70.0f32)
-                    );
-
-                    if resp.has_focus()
-                    {
-                        self.text_edit_value = self.text_edit_value.chars()
-                            .filter(|c| c.is_ascii_digit())
-                            .take(6)
-                            .collect();
-                    }
-
-                    if self.radio_button_proc_sel_meth == ByPIDInput
-                    {
-
-                        if self.text_edit_value.parse::<u32>().is_ok()
+                        if ui.radio(self.radio_button_proc_sel_meth == ByProcessName,
+                                    "".to_owned()).clicked()
                         {
-                            let result = self.process_list.iter().position(|x|
-                            <u32 as Into<Pid>>::into(x.pid) ==
-                                self.text_edit_value.parse::<u32>().unwrap());
-                            if result.is_some()
-                            {
-                                self.current_process_selected_index = result.unwrap();
-                                if resp.hovered()
-                                {
-                                    /*                                    resp.show_tooltip_text(format!("Selected {}",
-                                                                                                       self.process_list[self.current_process_selected_index]));*/
+                            self.radio_button_proc_sel_meth = ByProcessName;
+                        }
+
+                        let cb1_resp = ComboBox::from_id_source("ProcessListComboBox")
+                            .width(400.0f32)
+                            .selected_text(&self.combo_box_process_name)
+                            .show_ui(ui, |ui| {
+                                // Collect filtered processes
+                                let mut filtered_processes: Vec<&Process> = self.filter_system_services_and_daemon_processes();
+                                filtered_processes.sort_by_key(|process| &process.name);
+                                // Store potential updates here
+                                let mut new_selected_process_name = None;
+                                let mut new_selected_process_index = None;
+
+                                // Iterate over the filtered process list
+                                for process in &filtered_processes {
+                                    // Clone the string for selectable_value
+                                    let process_name = process.name.to_owned();
+                                    let selectable_text = format!("{}\t{}\t{}", process.name, process.pid, process.ppid);
+
+                                    if ui.selectable_value(
+                                        &mut self.combo_box_process_name.as_str(), // No longer modifying directly
+                                        process_name.as_str(),
+                                        selectable_text.as_str()
+                                    ).clicked() && self.radio_button_proc_sel_meth == ByProcessName {
+
+                                        // Store potential update
+                                        new_selected_process_name = Some(process.name.to_owned());
+                                        new_selected_process_index = Some(self.process_list.iter()
+                                            .position(|x| x.pid == process.pid)
+                                            .unwrap());
+                                    }
                                 }
-                            } else {
-                                /*                                resp.show_tooltip_text("Wrong PID input. Please try again.");*/
-                                self.process_list = get_process_list();
+
+                                // Update after the loop
+                                if let Some(name) = new_selected_process_name {
+                                    self.combo_box_process_name = name;
+                                }
+
+                                if let Some(index) = new_selected_process_index {
+                                    self.current_process_selected_index = index;
+                                }
+                            }).response;
+                        if cb1_resp.clicked_by(PointerButton::Primary) && self.radio_button_proc_sel_meth == ByProcessName
+                        {
+                            self.process_list = get_process_list();
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        //ui.label("\u{2699} PID:\t\t\t");
+
+                        let resp2 = ui.add(EmojiLabelWidget::new("⚙ PID:\t\t\t\t\t\t\t\t\t\t\t\t"));
+                        if resp2.hovered() && self.radio_button_proc_sel_meth == ByPID {
+                            let popup_id = Id::new("SelectedProcessByPIDPopUP");
+                            ui.memory_mut(|mem| mem.open_popup(popup_id));
+                            let _ = popup_below_widget(
+                                ui,
+                                popup_id,
+                                &resp2,
+                                |popup_ui| {
+                                    let process = &self.process_list[self.current_process_selected_index];
+                                    let process_info = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
+                                                               format!("PID:{:#?}", process.pid),
+                                                               format!("PPID:{:#?}", process.ppid),
+                                                               format!("Architecture:{:#?}", process.arch),
+                                                               format!("Bits:{:#?}", process.bits),
+                                                               format!("Start Time:{:#?}", process.start_time),
+                                                               format!("Path:\n{:#?}", process.path),
+                                                               format!("Name:{:#?}", process.name));
+                                    popup_ui.label(process_info);
+                                },
+                            );
+                        }
+
+
+                        if ui.radio(self.radio_button_proc_sel_meth == ByPID,
+                                    "".to_owned()).clicked()
+                        {
+                            self.radio_button_proc_sel_meth = ByPID;
+                        }
+                        let cb2_resp = ComboBox::from_id_source("PIDListComboBox").width(400.0f32)
+                            .selected_text(&self.combo_box_pid)
+                            .show_ui(ui, |ui| {
+
+                                // Collect filtered processes
+                                let mut filtered_processes: Vec<&Process> = self.filter_system_services_and_daemon_processes();
+                                filtered_processes.sort_by_key(|process| &process.pid);
+                                // Store potential updates here
+                                let mut new_selected_process_pid = None;
+                                let mut new_selected_process_index = None;
+
+                                for process in &filtered_processes {
+                                    let process_pid = process.pid.to_owned();
+                                    let selectable_text = format!("{}\t{}\t{}", process.pid, process.name, process.ppid);
+
+                                    if ui.selectable_value(&mut self.combo_box_pid.as_str(),
+                                                           process_pid.to_string().as_str(),
+                                                           selectable_text.as_str(),
+                                    ).clicked() && self.radio_button_proc_sel_meth == ByPID
+                                    {
+                                        // Store potential update
+                                        new_selected_process_pid = Some(process.pid.to_owned());
+                                        new_selected_process_index = Some(self.process_list.iter()
+                                            .position(|x| x.pid == process.pid)
+                                            .unwrap());
+                                    }
+                                }
+
+                                // Update after the loop
+                                if let Some(pid) = new_selected_process_pid {
+                                    self.combo_box_pid = pid.to_string();
+                                }
+
+                                if let Some(index) = new_selected_process_index {
+                                    self.current_process_selected_index = index;
+                                }
+                            }).response;
+
+                        if cb2_resp.clicked_by(PointerButton::Primary) && self.radio_button_proc_sel_meth == ByPID
+                        {
+                            self.process_list = get_process_list();
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        //ui.label("📝\u{2699} PID input:\t");
+                        let resp3 = ui.add(EmojiLabelWidget::new("⚙📝 PID input::\t\t\t\t\t\t\t\t\t\t\t\t"));
+                        if resp3.hovered() && self.radio_button_proc_sel_meth == ByPIDInput {
+                            let popup_id = Id::new("SelectedProcessByPIDInputPopUP");
+                            ui.memory_mut(|mem| mem.open_popup(popup_id));
+                            let _ = popup_below_widget(
+                                ui,
+                                popup_id,
+                                &resp3,
+                                |popup_ui| {
+                                    let process = &self.process_list[self.current_process_selected_index];
+                                    let process_info = format!("{}\n{}\n{}\n{}\n{}\n{}\n{}\n",
+                                                               format!("PID:{:#?}", process.pid),
+                                                               format!("PPID:{:#?}", process.ppid),
+                                                               format!("Architecture:{:#?}", process.arch),
+                                                               format!("Bits:{:#?}", process.bits),
+                                                               format!("Start Time:{:#?}", process.start_time),
+                                                               format!("Path:\n{:#?}", process.path),
+                                                               format!("Name:{:#?}", process.name));
+                                    popup_ui.label(process_info);
+                                },
+                            );
+                        }
+
+
+
+                        if ui.radio(self.radio_button_proc_sel_meth == ByPIDInput,
+                                    "".to_owned()).clicked()
+                        {
+                            self.radio_button_proc_sel_meth = ByPIDInput;
+                        }
+                        let resp = ui.add(TextEdit::singleline(&mut self.text_edit_value)
+                            .char_limit(6)
+                            .desired_width(70.0f32)
+                        );
+
+                        if resp.has_focus()
+                        {
+                            self.text_edit_value = self.text_edit_value.chars()
+                                .filter(|c| c.is_ascii_digit())
+                                .take(6)
+                                .collect();
+                        }
+
+                        if self.radio_button_proc_sel_meth == ByPIDInput
+                        {
+
+                            if self.text_edit_value.parse::<u32>().is_ok()
+                            {
+                                let result = self.process_list.iter().position(|x|
+                                <u32 as Into<Pid>>::into(x.pid) ==
+                                    self.text_edit_value.parse::<u32>().unwrap());
+                                if result.is_some()
+                                {
+                                    self.current_process_selected_index = result.unwrap();
+                                    if resp.hovered()
+                                    {
+                                        /*                                    resp.show_tooltip_text(format!("Selected {}",
+                                                                                                           self.process_list[self.current_process_selected_index]));*/
+                                    }
+                                } else {
+                                    /*                                resp.show_tooltip_text("Wrong PID input. Please try again.");*/
+                                    self.process_list = get_process_list();
+                                }
                             }
                         }
-                    }
-                    //ui.add(Button::new("⚙📝Select process".to_owned()).min_size(Vec2::from([140.0f32, 0.0f32])));
-                    let button = egui::Button::new("\t\t\t\t\t\t"); // Create a button without a label
-                    let response = ui.add(button); // Add the button to the UI
+                        //ui.add(Button::new("⚙📝Select process".to_owned()).min_size(Vec2::from([140.0f32, 0.0f32])));
+                        let button = egui::Button::new("\t\t\t\t\t\t"); // Create a button without a label
+                        let response = ui.add(button); // Add the button to the UI
 
-                    // Manually draw the label on top of the button
-                    let label = EmojiLabelWidget::new("⚙📝 PID input::\t\t\t\t\t\t\t\t\t\t\t\t");//egui::Label::new("Click me!").sense(egui::Sense::click());
-                    let label_response = ui.put(response.rect, label);
+                        // Manually draw the label on top of the button
+                        let label = EmojiLabelWidget::new("⚙📝 PID input::\t\t\t\t\t\t\t\t\t\t\t\t");//egui::Label::new("Click me!").sense(egui::Sense::click());
+                        let label_response = ui.put(response.rect, label);
 
-                    if response.clicked() || label_response.clicked()  {
-                        println!("Button with custom label was clicked!");
-                    }
+                        if response.clicked() || label_response.clicked()  {
+                            println!("Button with custom label was clicked!");
+                        }
 
 
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Selected process :\t");
+                        ui.label(format!("{:#?}", self.process_list[self.current_process_selected_index]));
+                    });
+                    ui.horizontal(|ui| {
+                        if ui.button("Update process list").clicked() {
+                            self.process_list = get_process_list();
+                        }
+                        if ui.button("💉\u{2699} Inject DLL into selected process").clicked() {
+                            info!("Injecting DLL into selected process");
+                            info!("Process name: {}", self.process_list[self.current_process_selected_index].name);
+                            info!("PID: {}", self.process_list[self.current_process_selected_index].pid);
+
+                            for dll in &self.dll_list_vector {
+                                if dll.switch {
+                                    info!("Injecting DLL: {}", dll.dll_name);
+                                    match inject_dll(&self.process_list[self.current_process_selected_index], &dll.dll_path) {
+                                        Ok(_) => info!("Successfully injected: {}", dll.dll_name),
+                                        Err(e) => info!("Failed to inject {}: {}", dll.dll_name, e),
+                                    }
+                                }
+                            }
+
+                        }
+                    });
                 });
-                ui.horizontal(|ui| {
-                    ui.label("Selected process :\t");
-                    ui.label(format!("{:#?}", self.process_list[self.current_process_selected_index]));
+                ui.separator();
+                ui.vertical(|ui| {
+                    ui.label("Inject list");
+                    ui.horizontal(|ui| {
+
+
+                    ui.vertical(|ui| {
+                        open_file_dialog_and_add_dll(ui, &mut self.dll_list_vector, &mut self.show_popup_error_dll_already_added);
+                        enable_disable_dll(ui, &mut self.dll_list_vector, &self.selected_row);
+                        remove_selected_dll(ui, &mut self.dll_list_vector, &mut self.selected_row);
+                        clear_all_dlls(ui, &mut self.dll_list_vector, &mut self.selected_row);
+                    });
+                    ui.vertical(|ui| {
+                        dll_list_table(ui, &mut self.selected_row, &mut self.dll_list_vector);
+                    });
+                    });
                 });
-                ui.horizontal(|ui| {
-                    if ui.button("Update process list").clicked() {
-                        self.process_list = get_process_list();
-                    }
-                    if ui.button("💉\u{2699} Inject DLL into selected process").clicked() {
-                        info!("Injecting DLL into selected process");
-                        info!("Process name: {}", self.process_list[self.current_process_selected_index].name);
-                        info!("PID: {}", self.process_list[self.current_process_selected_index].pid);
-                        //info!("Process PID: {}", self.current_process_selected.pid);
-                        //info!("DLL path: {}", self.text_edit_value);
-                    }
-                });
+
             });
         });
     }
+}
+use dll_syringe::Syringe;
+fn inject_dll(process: &Process, dll_path: &String) -> Result<(), String> {
+    info!("DLL path: {}", dll_path);
+    match OwnedProcess::from_pid(process.pid)
+    {
+        Ok(target_process) => {
+            let syringe = Syringe::for_process(target_process);
+            match syringe.inject(dll_path)
+            {
+                Ok(_) => {
+                    info!("Successfully injected: {}", dll_path);
+                }
+                Err(e) => {
+                    error!("Failed to inject {}: {}", dll_path, e);
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to open process {}: {}", process.pid, e);
+        }
+    }
+    Ok(())
 }
