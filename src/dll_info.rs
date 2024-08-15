@@ -1,10 +1,17 @@
+use std::ffi::OsStr;
+use std::path::Path;
+
 use egui::{Ui, Vec2, Window};
 use egui_extras::{Column, TableBuilder};
 use obfstr::obfstr;
 use pelite::{FileMap, PeFile};
+use pelite::image::{
+    IMAGE_FILE_32BIT_MACHINE, IMAGE_FILE_MACHINE_AMD64, IMAGE_FILE_MACHINE_I386,
+    IMAGE_FILE_MACHINE_IA64,
+};
 use rfd::FileDialog;
-use std::ffi::OsStr;
-use std::path::Path;
+
+use crate::emoji_button_widget::EmojiButtonWidget;
 
 #[derive(Debug, Clone)]
 pub struct DllInfo {
@@ -46,12 +53,6 @@ impl Default for DllInfo {
         }
     }
 }
-
-use crate::emoji_button_widget::EmojiButtonWidget;
-use pelite::image::{
-    IMAGE_FILE_32BIT_MACHINE, IMAGE_FILE_MACHINE_AMD64, IMAGE_FILE_MACHINE_I386,
-    IMAGE_FILE_MACHINE_IA64,
-};
 
 // Function to determine DLL architecture using pelite
 pub fn get_dll_architecture(path: &Path) -> String {
@@ -185,7 +186,7 @@ pub fn open_file_dialog_and_add_dll(
     }
 }
 
-pub fn ui_function(
+pub fn dll_list_buttons_column(
     ui: &mut Ui,
     dll_list_vector: &mut Vec<DllInfo>,
     selected_row: &mut Option<usize>,

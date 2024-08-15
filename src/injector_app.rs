@@ -1,15 +1,20 @@
-use crate::dll_info::{ui_function, DllInfo};
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+use dll_syringe::process::OwnedProcess;
+use dll_syringe::Syringe;
+use egui::{ComboBox, Id, PointerButton, Ui, Vec2};
+use egui_extras::{Column, TableBuilder};
+use libmem::Process;
+use obfstr::obfstr;
+use tracing::{error, info};
+
+use crate::dll_info::{dll_list_buttons_column, DllInfo};
+use crate::emoji_button_widget::EmojiButtonWidget;
 use crate::emoji_label_widget::EmojiLabelWidget;
 use crate::process_selection_method::ProcessSelectionMethod;
 use crate::process_selection_method::ProcessSelectionMethod::{ByPID, ByPIDInput, ByProcessName};
 use crate::utils::processlist::get_process_list;
-use dll_syringe::process::OwnedProcess;
-use egui::{ComboBox, Id, PointerButton, Ui, Vec2};
-use egui_extras::{Column, TableBuilder};
-use libmem::Process;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use tracing::{error, info};
 
 impl Default for InjectorApp {
     fn default() -> Self {
@@ -59,8 +64,8 @@ impl InjectorApp {
                 .path
                 .starts_with(sys32dir.as_os_str().to_str().unwrap())
                 || process
-                    .path
-                    .starts_with(syswow64dir.as_os_str().to_str().unwrap())
+                .path
+                .starts_with(syswow64dir.as_os_str().to_str().unwrap())
         }) {
             // If the process name already exists in the HashMap,
             // compare PPIDs and keep the one with the lower PPID.
@@ -155,10 +160,7 @@ impl eframe::App for InjectorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-
-
                 ui.vertical(|ui| {
-
                     TableBuilder::new(ui)
                         .striped(true)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -398,7 +400,6 @@ impl eframe::App for InjectorApp {
                                         println!("Emoji button with custom label was clicked!");
                                         // Perform the action for the button click
                                     }
-
                                 });
                             });
                         });
@@ -407,10 +408,6 @@ impl eframe::App for InjectorApp {
                         ui.label(format!("{:#?}", self.process_list[self.current_process_selected_index]));
                     });
                     ui.horizontal(|ui| {
-/*                        if ui.button("🔄📄\u{2699} Update process list").clicked() {
-                            self.process_list = get_process_list();
-                        }*/
-
                         TableBuilder::new(ui)
                             .striped(true)
                             .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -428,7 +425,6 @@ impl eframe::App for InjectorApp {
                                         if response.clicked() {
                                             self.process_list = get_process_list();
                                             println!("Emoji button with custom label was clicked! To update process list");
-                                            // Perform the action for the button click
                                         }
                                     });
                                     row.col(|ui| {
@@ -463,30 +459,18 @@ impl eframe::App for InjectorApp {
                 });
                 ui.separator();
                 ui.vertical(|ui| {
-                    ui.label("Inject list");
+                    ui.label(obfstr!("Inject list"));
                     ui.horizontal(|ui| {
-
-                        ui_function(ui, &mut self.dll_list_vector, &mut self.selected_row, &mut self.show_popup_error_dll_already_added);
-/*                    ui.vertical(|ui| {
-                        open_file_dialog_and_add_dll(ui, &mut self.dll_list_vector, &mut self.show_popup_error_dll_already_added);
-                        enable_disable_dll(ui, &mut self.dll_list_vector, &self.selected_row);
-                        remove_selected_dll(ui, &mut self.dll_list_vector, &mut self.selected_row);
-                        clear_all_dlls(ui, &mut self.dll_list_vector, &mut self.selected_row);
-                    });*/
-                    ui.vertical(|ui| {
-                        dll_list_table(ui, &mut self.selected_row, &mut self.dll_list_vector);
-                    });
+                        dll_list_buttons_column(ui, &mut self.dll_list_vector, &mut self.selected_row, &mut self.show_popup_error_dll_already_added);
+                        ui.vertical(|ui| {
+                            dll_list_table(ui, &mut self.selected_row, &mut self.dll_list_vector);
+                        });
                     });
                 });
-
             });
         });
     }
 }
-use crate::emoji_button_widget::EmojiButtonWidget;
-use dll_syringe::Syringe;
-use obfstr::obfstr;
-
 fn inject_dll(process: &Process, dll_path: &String) -> Result<(), String> {
     info!("DLL path: {}", dll_path);
     match OwnedProcess::from_pid(process.pid) {
@@ -494,15 +478,15 @@ fn inject_dll(process: &Process, dll_path: &String) -> Result<(), String> {
             let syringe = Syringe::for_process(target_process);
             match syringe.inject(dll_path) {
                 Ok(_) => {
-                    info!("Successfully injected: {}", dll_path);
+                    info!("{}", obfstr!("Successfully injected!"));
                 }
                 Err(e) => {
-                    error!("Failed to inject {}: {}", dll_path, e);
+                    error!("{}: {}", obfstr!("Failed to inject"), e);
                 }
             }
         }
         Err(e) => {
-            error!("Failed to open process {}: {}", process.pid, e);
+            error!("{} {}: {}", obfstr!("Failed to open process"), process.pid, e);
         }
     }
     Ok(())

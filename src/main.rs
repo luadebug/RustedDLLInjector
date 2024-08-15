@@ -1,12 +1,13 @@
 //#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::fs;
+use std::fs::File;
+
 use eframe::egui;
 use egui::{Context, FontData, FontDefinitions, FontFamily};
 use font_kit::{
     family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
 };
-use std::fs;
-use std::fs::File;
 use tracing::info;
 
 use crate::injector_app::InjectorApp as InjectorAppWindow;
