@@ -4,17 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-egui = { version = "0.27.2", features = ["default"] }
+egui = { version = "0.28.1", features = ["default"] }
 env_logger = { version = "0.11.5", features = ["auto-color", "humantime"] }
-eframe = { version = "0.27.2", features = ["default"] }
-egui_extras = { version = "0.27.2", features = ["default", "image", "svg"] }
-libmem = { version = "5.0.1", features = ["static", "fetch"] }
+eframe = { version = "0.28.1", features = ["default"] }
+egui_extras = { version = "0.28.1", features = ["default", "image", "svg"] }
+
+libmem = { git = "https://github.com/rdbo/libmem", branch = "master", features = ["static"] }
+#libmem = { version = "5.0.1", features = ["static", "fetch"] }
+
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
 tracing = "0.1.40"
 font-kit = { version = "0.14.2", features = ["freetype"] }
 chrono = { version = "0.4.38" }
 
-egui-twemoji = { version = "0.3.0", features = ["svg"] }
+#egui-twemoji = { version = "0.3.0", features = ["svg"] }
+egui-twemoji = {git = "https://github.com/zeozeozeo/egui-twemoji", branch = "master", features = ["svg"]}
 
 pelite = { version = "0.10.0", features = ["default"] }
 rfd = { version = "0.14.1", features = ["default"] }

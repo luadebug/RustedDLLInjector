@@ -19,8 +19,9 @@ mod injector_app;
 mod process_selection_method;
 mod utils;
 
+
 fn load_system_fonts(ctx: &Context) {
-    info!("Started loading system fonts");
+    info!("Started loading system fonts3");
 
     // Helper function to load font data by PostScript name or family name
     fn load_font_data(postscript_name: &str, fallback_family: FamilyName) -> Vec<u8> {
@@ -118,7 +119,7 @@ fn main() -> Result<(), eframe::Error> {
             // This gives us image support:
             load_system_fonts(&cc.egui_ctx);
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            Box::<InjectorAppWindow>::default()
+            Ok(Box::<InjectorAppWindow>::default())
         }),
     )
 }

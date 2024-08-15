@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use dll_syringe::process::OwnedProcess;
 use dll_syringe::Syringe;
-use egui::{ComboBox, Id, PointerButton, Ui, Vec2};
+use egui::{ComboBox, PointerButton, Ui, Vec2};
 use egui_extras::{Column, TableBuilder};
 use libmem::Process;
 use obfstr::obfstr;
@@ -164,7 +164,7 @@ impl eframe::App for InjectorApp {
                     TableBuilder::new(ui)
                         .striped(true)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Column::initial(100.0).at_least(100.0)) // First column: Label
+                        .column(Column::initial(200.0).at_least(200.0)) // First column: Label
                         .column(Column::initial(100.0).at_least(100.0))    // Second column: Radio Button
                         .column(Column::initial(100.0).at_least(100.0))    // Third column: ComboBox
                         .body(|mut body| {
@@ -173,22 +173,17 @@ impl eframe::App for InjectorApp {
                                 row.col(|ui| {
                                     let resp1 = ui.add(EmojiLabelWidget::new(obfstr!("⚙ Process:\t\t")));
                                     if resp1.hovered() && self.radio_button_proc_sel_meth == ByProcessName {
-                                        let popup_id = Id::new(obfstr!("SelectedProcessNamePopUP"));
-                                        ui.memory_mut(|mem| mem.open_popup(popup_id));
-                                        let _ = egui::popup_below_widget(ui, popup_id, &resp1, |popup_ui| {
-                                            let process = &self.process_list[self.current_process_selected_index];
-                                            let process_info = format!(
-                                                "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
-                                                process.pid,
-                                                process.ppid,
-                                                process.arch,
-                                                process.bits,
-                                                process.start_time,
-                                                process.path,
-                                                process.name
-                                            );
-                                            popup_ui.label(process_info);
-                                        });
+                                        let process = &self.process_list[self.current_process_selected_index];
+                                        resp1.show_tooltip_text(format!(
+                                            "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
+                                            process.pid,
+                                            process.ppid,
+                                            process.arch,
+                                            process.bits,
+                                            process.start_time,
+                                            process.path,
+                                            process.name
+                                        ));
                                     }
                                 });
 
@@ -243,7 +238,7 @@ impl eframe::App for InjectorApp {
                     TableBuilder::new(ui)
                         .striped(true)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Column::initial(100.0).at_least(100.0)) // First column: Label
+                        .column(Column::initial(200.0).at_least(200.0)) // First column: Label
                         .column(Column::initial(100.0).at_least(100.0)) // Second column: Radio Button
                         .column(Column::initial(100.0).at_least(100.0)) // Third column: ComboBox
                         .body(|mut body| {
@@ -252,22 +247,17 @@ impl eframe::App for InjectorApp {
                                 row.col(|ui| {
                                     let resp2 = ui.add(EmojiLabelWidget::new(obfstr!("⚙🆔 PID:\t\t\t\t\t\t")));
                                     if resp2.hovered() && self.radio_button_proc_sel_meth == ByPID {
-                                        let popup_id = Id::new(obfstr!("SelectedProcessByPIDPopUP"));
-                                        ui.memory_mut(|mem| mem.open_popup(popup_id));
-                                        let _ = egui::popup_below_widget(ui, popup_id, &resp2, |popup_ui| {
-                                            let process = &self.process_list[self.current_process_selected_index];
-                                            let process_info = format!(
-                                                "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
-                                                process.pid,
-                                                process.ppid,
-                                                process.arch,
-                                                process.bits,
-                                                process.start_time,
-                                                process.path,
-                                                process.name
-                                            );
-                                            popup_ui.label(process_info);
-                                        });
+                                        let process = &self.process_list[self.current_process_selected_index];
+                                        resp2.show_tooltip_text(format!(
+                                            "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
+                                            process.pid,
+                                            process.ppid,
+                                            process.arch,
+                                            process.bits,
+                                            process.start_time,
+                                            process.path,
+                                            process.name
+                                        ));
                                     }
                                 });
 
@@ -322,7 +312,7 @@ impl eframe::App for InjectorApp {
                     TableBuilder::new(ui)
                         .striped(true)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Column::initial(100.0).at_least(100.0)) // First column: Label
+                        .column(Column::initial(200.0).at_least(200.0)) // First column: Label
                         .column(Column::initial(100.0).at_least(100.0)) // Second column: Radio Button
                         .column(Column::initial(100.0).at_least(100.0)) // Third column: TextEdit
                         .column(Column::initial(100.0).at_least(100.0)) // Fourth column: Button
@@ -331,23 +321,18 @@ impl eframe::App for InjectorApp {
                                 // First column: Label
                                 row.col(|ui| {
                                     let resp3 = ui.add(EmojiLabelWidget::new(obfstr!("⚙🆔📝 PID input:\t")));
-                                    if resp3.hovered() && self.radio_button_proc_sel_meth == ProcessSelectionMethod::ByPIDInput {
-                                        let popup_id = Id::new(obfstr!("SelectedProcessByPIDInputPopUP"));
-                                        ui.memory_mut(|mem| mem.open_popup(popup_id));
-                                        let _ = egui::popup_below_widget(ui, popup_id, &resp3, |popup_ui| {
-                                            let process = &self.process_list[self.current_process_selected_index];
-                                            let process_info = format!(
-                                                "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
-                                                process.pid,
-                                                process.ppid,
-                                                process.arch,
-                                                process.bits,
-                                                process.start_time,
-                                                process.path,
-                                                process.name
-                                            );
-                                            popup_ui.label(process_info);
-                                        });
+                                    if resp3.hovered() && self.radio_button_proc_sel_meth == ByPIDInput {
+                                        let process = &self.process_list[self.current_process_selected_index];
+                                        resp3.show_tooltip_text(format!(
+                                            "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
+                                            process.pid,
+                                            process.ppid,
+                                            process.arch,
+                                            process.bits,
+                                            process.start_time,
+                                            process.path,
+                                            process.name
+                                        ));
                                     }
                                 });
 
@@ -411,14 +396,15 @@ impl eframe::App for InjectorApp {
                         TableBuilder::new(ui)
                             .striped(true)
                             .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                            .column(Column::initial(100.0).at_least(100.0)) // First column: Update button
-                            .column(Column::initial(100.0).at_least(100.0)) // Second column: Inject DLL button
+                            .column(Column::initial(250.0).at_least(250.0)) // First column: Update button
+                            .column(Column::initial(5.0).at_least(5.0)) // First column: Update button
+                            .column(Column::initial(250.0).at_least(250.0)) // Second column: Inject DLL button
                             .body(|mut body| {
                                 body.row(15.0, |mut row| {
                                     // First column: Update Process List Button
                                     row.col(|ui| {
                                         let emoji_button_update_process_list = EmojiButtonWidget::new(obfstr!("🔄📄\u{2699} Update process list"))
-                                            .min_size(Vec2::from(&[200.0, 30.0])); // Set the button size
+                                            .min_size(Vec2::from(&[250.0, 10.0])); // Set the button size
 
                                         let response = ui.add(emoji_button_update_process_list);
 
@@ -428,12 +414,12 @@ impl eframe::App for InjectorApp {
                                         }
                                     });
                                     row.col(|ui| {
-                                        ui.add_space(100.0f32);
+                                        ui.add_space(5.0f32);
                                     });
                                     // Second column: Inject DLL into Selected Process Button
                                     row.col(|ui| {
-                                        let emoji_button_inject_dll_into_proc = EmojiButtonWidget::new(obfstr!("💉\u{2699} Inject DLL into selected process"))
-                                            .min_size(Vec2::from(&[200.0, 30.0])); // Set the button size
+                                        let emoji_button_inject_dll_into_proc = EmojiButtonWidget::new(obfstr!("💉\u{2699} Inject DLL into selected process1"))
+                                            .min_size(Vec2::from(&[250.0, 10.0])); // Set the button size
 
                                         let response2 = ui.add(emoji_button_inject_dll_into_proc);
 
