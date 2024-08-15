@@ -15,3 +15,8 @@ font-kit = { version = "0.14.2", features = ["freetype"] }
 chrono = { version = "0.4.38" }
 
 egui-twemoji = { version = "0.3.0", features = ["svg"] }
+
+pelite = { version = "0.10.0", features = ["default"] }
+rfd = { version = "0.14.1", features = ["default"] }
+
+dll-syringe = { git = "https://github.com/OpenByteDev/dll-syringe"}

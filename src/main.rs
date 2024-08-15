@@ -29,6 +29,7 @@ use crate::InjectorApp::{InjectorApp as InjectorAppWindow};
 mod utils;
 mod InjectorApp;
 mod ProcessSelectionMethod;
+mod EmojiButtonWidget;
 mod EmojiLabelWidget;
 mod DllInfo;
 
