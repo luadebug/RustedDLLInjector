@@ -2,6 +2,7 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::thread::sleep;
 use egui::{Button, Ui, Vec2, Window};
+use egui_extras::{Column, TableBuilder};
 use pelite::{FileMap, PeFile};
 use pelite::image::IMAGE_FILE_HEADER;
 use pelite::resources::FindError::Pe;
@@ -43,6 +44,8 @@ impl Default for DllInfo {
 }
 
 use pelite::image::{IMAGE_FILE_MACHINE_AMD64, IMAGE_FILE_MACHINE_I386, IMAGE_FILE_MACHINE_IA64, IMAGE_FILE_32BIT_MACHINE};
+use crate::EmojiButtonWidget::EmojiButtonWidget;
+
 // Function to determine DLL architecture using pelite
 pub fn get_dll_architecture(path: &Path) -> String {
     let file_map = FileMap::open(path).expect("Failed to open the file.");
@@ -58,7 +61,7 @@ pub fn get_dll_architecture(path: &Path) -> String {
 
 
 pub fn remove_selected_dll(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, selected_row: &mut Option<usize>) {
-    let remove_resp = ui.add(Button::new("Remove").min_size(Vec2::from([140.0f32, 0.0f32])));
+    let remove_resp = ui.add(EmojiButtonWidget::new("➖📚 Remove").min_size(Vec2::from([200.0f32, 10.0f32])));
 
     if remove_resp.clicked() {
         if let Some(selected_index) = selected_row {
@@ -77,7 +80,7 @@ pub fn remove_selected_dll(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, sele
 }
 
 pub fn clear_all_dlls(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, selected_row: &mut Option<usize>) {
-    let clear_resp = ui.add(Button::new("Clear").min_size(Vec2::from([140.0f32, 0.0f32])));
+    let clear_resp = ui.add(EmojiButtonWidget::new("🗑📚 Clear").min_size(Vec2::from([200.0f32, 10.0f32])));
 
     if clear_resp.clicked() {
         // Clear the vector of DLLs
@@ -91,7 +94,7 @@ pub fn clear_all_dlls(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, selected_
 
 pub fn enable_disable_dll(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, selected_row: &Option<usize>)
 {
-    let enable_disable_resp = ui.add(Button::new("Enable/Disable").min_size(Vec2::from([140.0f32, 0.0f32])));
+    let enable_disable_resp = ui.add(EmojiButtonWidget::new("🔌📚 Enable/Disable DLL").min_size(Vec2::from([200.0f32, 10.0f32])));
     if enable_disable_resp.clicked() {
         if let Some(selected_index) = *selected_row {
             if let Some(dll) = dll_list_vector.iter_mut().find(|dll| dll.index == selected_index) {
@@ -103,7 +106,7 @@ pub fn enable_disable_dll(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, selec
 
 
 pub fn open_file_dialog_and_add_dll(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, show_popup: &mut bool) {
-    let add_dll_resp = ui.add(Button::new("Add DLL").min_size(Vec2::from([140.0f32, 0.0f32])));
+    let add_dll_resp = ui.add(EmojiButtonWidget::new("➕📚 Add DLL").min_size(Vec2::from([200.0f32, 10.0f32])));
 
     if add_dll_resp.clicked() {
         if let Some(path) = FileDialog::new()
@@ -145,4 +148,49 @@ pub fn open_file_dialog_and_add_dll(ui: &mut Ui, dll_list_vector: &mut Vec<DllIn
                 }
             });
     }
+}
+
+pub fn ui_function(ui: &mut Ui, dll_list_vector: &mut Vec<DllInfo>, selected_row: &mut Option<usize>, show_popup_error_dll_already_added: &mut bool) {
+    TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(Column::initial(100.0).at_least(100.0)) // Single column
+        .body(|mut body| {
+            // Row 1: Add DLL Button
+            body.row(15.0, |mut row| {
+                row.col(|ui| {
+                    open_file_dialog_and_add_dll(ui, dll_list_vector, show_popup_error_dll_already_added);
+                });
+            });
+            body.row(10.0, |mut row| {
+                row.col(|ui| {
+                });
+            });
+            // Row 2: Enable/Disable DLL Button
+            body.row(15.0, |mut row| {
+                row.col(|ui| {
+                    enable_disable_dll(ui, dll_list_vector, selected_row);
+                });
+            });
+            body.row(10.0, |mut row| {
+                row.col(|ui| {
+                });
+            });
+            // Row 3: Remove DLL Button
+            body.row(15.0, |mut row| {
+                row.col(|ui| {
+                    remove_selected_dll(ui, dll_list_vector, selected_row);
+                });
+            });
+            body.row(10.0, |mut row| {
+                row.col(|ui| {
+                });
+            });
+            // Row 4: Clear All DLLs Button
+            body.row(15.0, |mut row| {
+                row.col(|ui| {
+                    clear_all_dlls(ui, dll_list_vector, selected_row);
+                });
+            });
+        });
 }

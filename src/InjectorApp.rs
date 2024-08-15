@@ -12,7 +12,7 @@ use egui::TextStyle::{Body as BodyStyle, Button as ButtonStyle, Heading as Headi
 use egui_extras::{Column, TableBuilder};
 use libmem::{Pid, Process, process};
 use tracing::{error, info};
-use crate::DllInfo::{clear_all_dlls, DllInfo, enable_disable_dll, open_file_dialog_and_add_dll, remove_selected_dll};
+use crate::DllInfo::{clear_all_dlls, DllInfo, enable_disable_dll, open_file_dialog_and_add_dll, remove_selected_dll, ui_function};
 use crate::EmojiLabelWidget::EmojiLabelWidget;
 use crate::ProcessSelectionMethod::ProcessSelectionMethod;
 use crate::ProcessSelectionMethod::ProcessSelectionMethod::{ByPID, ByPIDInput, ByProcessName};
@@ -328,7 +328,7 @@ impl eframe::App for InjectorApp {
                             body.row(18.0, |mut row| {
                                 // First column: Label
                                 row.col(|ui| {
-                                    let resp2 = ui.add(EmojiLabelWidget::new("⚙ PID:\t\t\t\t\t\t"));
+                                    let resp2 = ui.add(EmojiLabelWidget::new("⚙🆔 PID:\t\t\t\t\t\t"));
                                     if resp2.hovered() && self.radio_button_proc_sel_meth == ProcessSelectionMethod::ByPID {
                                         let popup_id = Id::new("SelectedProcessByPIDPopUP");
                                         ui.memory_mut(|mem| mem.open_popup(popup_id));
@@ -408,7 +408,7 @@ impl eframe::App for InjectorApp {
                             body.row(18.0, |mut row| {
                                 // First column: Label
                                 row.col(|ui| {
-                                    let resp3 = ui.add(EmojiLabelWidget::new("⚙📝 PID input:\t"));
+                                    let resp3 = ui.add(EmojiLabelWidget::new("⚙🆔📝 PID input:\t"));
                                     if resp3.hovered() && self.radio_button_proc_sel_meth == ProcessSelectionMethod::ByPIDInput {
                                         let popup_id = Id::new("SelectedProcessByPIDInputPopUP");
                                         ui.memory_mut(|mem| mem.open_popup(popup_id));
@@ -468,26 +468,17 @@ impl eframe::App for InjectorApp {
                                 // Fourth column: Button
                                 row.col(|ui| {
                                     // Create an emoji button
-                                    let emoji_button = EmojiButtonWidget::new("⚙📝 Select process")
+                                    let emoji_button_select_process = EmojiButtonWidget::new("⚙📝 Select process")
                                         .min_size(egui::vec2(292.0, 0.0)); // Set the button size
 
                                     // Add the button to the UI and handle clicks
-                                    let response = ui.add(emoji_button);
+                                    let response = ui.add(emoji_button_select_process);
 
                                     if response.clicked() {
                                         println!("Emoji button with custom label was clicked!");
                                         // Perform the action for the button click
                                     }
-/*                                    let button = egui::Button::new("\t\t\t\t\t\t").min_size(Vec2::from([292.0f32, 0.0f32])); // Create a button without a label
-                                    let response = ui.add(button); // Add the button to the UI
 
-                                    // Manually draw the label on top of the button
-                                    let label = EmojiLabelWidget::new("⚙📝 Select process");//egui::Label::new("Click me!").sense(egui::Sense::click());
-                                    let label_response = ui.put(response.rect, label);
-
-                                    if response.clicked() || label_response.clicked() {
-                                        println!("Button with custom label was clicked!");
-                                    }*/
                                 });
                             });
                         });
@@ -496,25 +487,58 @@ impl eframe::App for InjectorApp {
                         ui.label(format!("{:#?}", self.process_list[self.current_process_selected_index]));
                     });
                     ui.horizontal(|ui| {
-                        if ui.button("🔄📄\u{2699} Update process list").clicked() {
+/*                        if ui.button("🔄📄\u{2699} Update process list").clicked() {
                             self.process_list = get_process_list();
-                        }
-                        if ui.button("💉\u{2699} Inject DLL into selected process").clicked() {
-                            info!("Injecting DLL into selected process");
-                            info!("Process name: {}", self.process_list[self.current_process_selected_index].name);
-                            info!("PID: {}", self.process_list[self.current_process_selected_index].pid);
+                        }*/
 
-                            for dll in &self.dll_list_vector {
-                                if dll.switch {
-                                    info!("Injecting DLL: {}", dll.dll_name);
-                                    match inject_dll(&self.process_list[self.current_process_selected_index], &dll.dll_path) {
-                                        Ok(_) => info!("Successfully injected: {}", dll.dll_name),
-                                        Err(e) => info!("Failed to inject {}: {}", dll.dll_name, e),
-                                    }
-                                }
-                            }
+                        TableBuilder::new(ui)
+                            .striped(true)
+                            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                            .column(Column::initial(100.0).at_least(100.0)) // First column: Update button
+                            .column(Column::initial(100.0).at_least(100.0)) // Second column: Inject DLL button
+                            .body(|mut body| {
+                                body.row(15.0, |mut row| {
+                                    // First column: Update Process List Button
+                                    row.col(|ui| {
+                                        let emoji_button_update_process_list = EmojiButtonWidget::new("🔄📄\u{2699} Update process list")
+                                            .min_size(egui::vec2(200.0, 30.0)); // Set the button size
 
-                        }
+                                        let response = ui.add(emoji_button_update_process_list);
+
+                                        if response.clicked() {
+                                            self.process_list = get_process_list();
+                                            println!("Emoji button with custom label was clicked! To update process list");
+                                            // Perform the action for the button click
+                                        }
+                                    });
+                                    row.col(|ui| {
+                                        ui.add_space(100.0f32);
+                                    });
+                                    // Second column: Inject DLL into Selected Process Button
+                                    row.col(|ui| {
+                                        let emoji_button_inject_dll_into_proc = EmojiButtonWidget::new("💉\u{2699} Inject DLL into selected process")
+                                            .min_size(egui::vec2(200.0, 30.0)); // Set the button size
+
+                                        let response2 = ui.add(emoji_button_inject_dll_into_proc);
+
+                                        if response2.clicked() {
+                                            println!("Injecting DLL into selected process");
+                                            println!("Process name: {}", self.process_list[self.current_process_selected_index].name);
+                                            println!("PID: {}", self.process_list[self.current_process_selected_index].pid);
+
+                                            for dll in &self.dll_list_vector {
+                                                if dll.switch {
+                                                    println!("Injecting DLL: {}", dll.dll_name);
+                                                    match inject_dll(&self.process_list[self.current_process_selected_index], &dll.dll_path) {
+                                                        Ok(_) => println!("Successfully injected: {}", dll.dll_name),
+                                                        Err(e) => println!("Failed to inject {}: {}", dll.dll_name, e),
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                });
+                            });
                     });
                 });
                 ui.separator();
@@ -522,13 +546,13 @@ impl eframe::App for InjectorApp {
                     ui.label("Inject list");
                     ui.horizontal(|ui| {
 
-
-                    ui.vertical(|ui| {
+                        ui_function(ui, &mut self.dll_list_vector, &mut self.selected_row, &mut self.show_popup_error_dll_already_added);
+/*                    ui.vertical(|ui| {
                         open_file_dialog_and_add_dll(ui, &mut self.dll_list_vector, &mut self.show_popup_error_dll_already_added);
                         enable_disable_dll(ui, &mut self.dll_list_vector, &self.selected_row);
                         remove_selected_dll(ui, &mut self.dll_list_vector, &mut self.selected_row);
                         clear_all_dlls(ui, &mut self.dll_list_vector, &mut self.selected_row);
-                    });
+                    });*/
                     ui.vertical(|ui| {
                         dll_list_table(ui, &mut self.selected_row, &mut self.dll_list_vector);
                     });
