@@ -20,3 +20,5 @@ pelite = { version = "0.10.0", features = ["default"] }
 rfd = { version = "0.14.1", features = ["default"] }
 
 dll-syringe = { git = "https://github.com/OpenByteDev/dll-syringe"}
+
+obfstr = { version = "0.4.3" }
