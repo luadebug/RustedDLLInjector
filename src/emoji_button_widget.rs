@@ -11,9 +11,11 @@ impl EmojiButtonWidget {
     pub fn new(label: &str) -> Self {
         Self {
             label: label.to_owned(),
-            button: Button::new(""), // Initialize with an empty label since we'll draw the emoji label manually.
+            button: Button::new(""), /* Initialize with an empty label since we'll draw the emoji
+                                      * label manually. */
         }
     }
+
     pub fn min_size(mut self, size: Vec2) -> Self {
         self.button = self.button.min_size(size);
         self

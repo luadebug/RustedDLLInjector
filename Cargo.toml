@@ -1,7 +1,8 @@
+cargo-features = ["edition2024"]
 [package]
 name = "testing"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 egui = { version = "0.28.1", features = ["default"] }
@@ -9,8 +10,10 @@ env_logger = { version = "0.11.5", features = ["auto-color", "humantime"] }
 eframe = { version = "0.28.1", features = ["default"] }
 egui_extras = { version = "0.28.1", features = ["default", "image", "svg"] }
 
-libmem = { git = "https://github.com/rdbo/libmem", branch = "master", features = ["static"] }
-#libmem = { version = "5.0.1", features = ["static", "fetch"] }
+#libmem = { git = "https://github.com/rdbo/libmem", branch = "test", features = ["static", "fetch"] }
+#libmem = { version = "5.0.1", features = ["static"] } #, "fetch"
+libmem = {git = "https://github.com/luadebug/libmem", branch = "test", features = ["static", "fetch"]}
+
 
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
 tracing = "0.1.40"
@@ -18,7 +21,7 @@ font-kit = { version = "0.14.2", features = ["freetype"] }
 chrono = { version = "0.4.38" }
 
 #egui-twemoji = { version = "0.3.0", features = ["svg"] }
-egui-twemoji = {git = "https://github.com/zeozeozeo/egui-twemoji", branch = "master", features = ["svg"]}
+egui-twemoji = { git = "https://github.com/zeozeozeo/egui-twemoji", branch = "master", features = ["svg"] }
 
 pelite = { version = "0.10.0", features = ["default"] }
 rfd = { version = "0.14.1", features = ["default"] }
@@ -26,3 +29,26 @@ rfd = { version = "0.14.1", features = ["default"] }
 dll-syringe = { git = "https://github.com/OpenByteDev/dll-syringe"}
 
 obfstr = { version = "0.4.3" }
+
+winsafe = { git = "https://github.com/rodrigocfd/winsafe", branch = "master", features = ["kernel"] }
+
+dinvoke_rs = "0.1.5"
+
+widestring = "1.1.0"
+
+[dependencies.windows]
+version = "0.51"
+features = [
+    "Win32_Foundation",
+    "Win32_System",
+    "Win32_System_IO",
+    "Win32_System_Kernel",
+    "Win32_System_Diagnostics_Debug",
+    "Wdk_Foundation",
+    "Win32_System_Threading"
+]
+[dependencies.iced-x86]
+version = "1.21.0"
+features = ["code_asm"]
+
+

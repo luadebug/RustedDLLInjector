@@ -1,20 +1,20 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use dll_syringe::process::OwnedProcess;
-use dll_syringe::Syringe;
+// use dll_syringe::process::OwnedProcess;
+// use dll_syringe::Syringe;
 use egui::{ComboBox, PointerButton, Ui, Vec2};
 use egui_extras::{Column, TableBuilder};
 use libmem::Process;
 use obfstr::obfstr;
-use tracing::{error, info};
 
+// use tracing::{error, info};
 use crate::dll_info::{dll_list_buttons_column, DllInfo};
 use crate::emoji_button_widget::EmojiButtonWidget;
 use crate::emoji_label_widget::EmojiLabelWidget;
 use crate::process_selection_method::ProcessSelectionMethod;
 use crate::process_selection_method::ProcessSelectionMethod::{ByPID, ByPIDInput, ByProcessName};
-use crate::utils::processlist::get_process_list;
+use crate::utils::processlist::{get_process_list, inject_dll_test_fix};
 
 impl Default for InjectorApp {
     fn default() -> Self {
@@ -22,12 +22,12 @@ impl Default for InjectorApp {
             combo_box_process_name: "".to_owned(),
             combo_box_pid: "".to_owned(),
             radio_button_proc_sel_meth: ByProcessName,
-            //checkbox_value: false,
+            // checkbox_value: false,
             text_edit_value: "".to_owned(),
-            //process_architecture: "x64".to_owned(),
+            // process_architecture: "x64".to_owned(),
             process_list: get_process_list(),
             current_process_selected_index: 0,
-            //focused_item_index: Some(0),
+            // focused_item_index: Some(0),
             selected_row: None,
             dll_list_vector: Vec::new(),
             show_popup_error_dll_already_added: false,
@@ -39,12 +39,12 @@ pub struct InjectorApp {
     combo_box_process_name: String,
     combo_box_pid: String,
     radio_button_proc_sel_meth: ProcessSelectionMethod,
-    //checkbox_value: bool,
+    // checkbox_value: bool,
     text_edit_value: String,
-    //process_architecture: String,
+    // process_architecture: String,
     process_list: Vec<Process>,
     current_process_selected_index: usize,
-    //focused_item_index: Option<usize>,
+    // focused_item_index: Option<usize>,
     selected_row: Option<usize>,
     dll_list_vector: Vec<DllInfo>,
     show_popup_error_dll_already_added: bool,
@@ -60,18 +60,15 @@ impl InjectorApp {
         let mut unique_processes: HashMap<&str, &Process> = HashMap::new();
 
         for process in self.process_list.iter().filter(|process| {
-            !process
-                .path
-                .starts_with(sys32dir.as_os_str().to_str().unwrap())
-                || process
-                .path
-                .starts_with(syswow64dir.as_os_str().to_str().unwrap())
+            !process.path.starts_with(sys32dir.as_os_str().to_str().unwrap())
+                || process.path.starts_with(syswow64dir.as_os_str().to_str().unwrap())
         }) {
             // If the process name already exists in the HashMap,
             // compare PPIDs and keep the one with the lower PPID.
             if let Some(existing_process) = unique_processes.get_mut(&process.name as &str) {
                 if process.ppid < existing_process.ppid {
-                    *existing_process = process; // Update with the process having lower PPID
+                    *existing_process = process; // Update with the process
+                                                 // having lower PPID
                 }
             } else {
                 // If the process name is not found, insert it into the HashMap.
@@ -431,7 +428,7 @@ impl eframe::App for InjectorApp {
                                             for dll in &self.dll_list_vector {
                                                 if dll.switch {
                                                     println!("Injecting DLL: {}", dll.dll_name);
-                                                    match inject_dll(&self.process_list[self.current_process_selected_index], &dll.dll_path) {
+                                                    match inject_dll_test_fix(&self.process_list[self.current_process_selected_index], &dll.dll_path) {
                                                         Ok(_) => println!("Successfully injected: {}", dll.dll_name),
                                                         Err(e) => println!("Failed to inject {}: {}", dll.dll_name, e),
                                                     }
@@ -457,23 +454,23 @@ impl eframe::App for InjectorApp {
         });
     }
 }
-fn inject_dll(process: &Process, dll_path: &String) -> Result<(), String> {
-    info!("DLL path: {}", dll_path);
-    match OwnedProcess::from_pid(process.pid) {
-        Ok(target_process) => {
-            let syringe = Syringe::for_process(target_process);
-            match syringe.inject(dll_path) {
-                Ok(_) => {
-                    info!("{}", obfstr!("Successfully injected!"));
-                }
-                Err(e) => {
-                    error!("{}: {}", obfstr!("Failed to inject"), e);
-                }
-            }
-        }
-        Err(e) => {
-            error!("{} {}: {}", obfstr!("Failed to open process"), process.pid, e);
-        }
-    }
-    Ok(())
-}
+// fn inject_dll(process: &Process, dll_path: &String) -> Result<(), String> {
+// info!("DLL path: {}", dll_path);
+// match OwnedProcess::from_pid(process.pid) {
+// Ok(target_process) => {
+// let syringe = Syringe::for_process(target_process);
+// match syringe.inject(dll_path) {
+// Ok(_) => {
+// info!("{}", obfstr!("Successfully injected!"));
+// },
+// Err(e) => {
+// error!("{}: {}", obfstr!("Failed to inject"), e);
+// },
+// }
+// },
+// Err(e) => {
+// error!("{} {}: {}", obfstr!("Failed to open process"), process.pid, e);
+// },
+// }
+// Ok(())
+// }

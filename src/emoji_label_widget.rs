@@ -6,9 +6,7 @@ pub struct EmojiLabelWidget {
 
 impl EmojiLabelWidget {
     pub fn new(label: &str) -> Self {
-        Self {
-            label: EmojiLabel::new(label),
-        }
+        Self { label: EmojiLabel::new(label) }
     }
 }
 

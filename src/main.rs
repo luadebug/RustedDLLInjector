@@ -1,13 +1,15 @@
-//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide
+//#![cfg_attr(not(debug_assertions), console window on Windows in release
 
 use std::fs;
 use std::fs::File;
 
 use eframe::egui;
 use egui::{Context, FontData, FontDefinitions, FontFamily};
-use font_kit::{
-    family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
-};
+use font_kit::family_name::FamilyName;
+use font_kit::handle::Handle;
+use font_kit::properties::Properties;
+use font_kit::source::SystemSource;
 use tracing::info;
 
 use crate::injector_app::InjectorApp as InjectorAppWindow;
@@ -18,7 +20,6 @@ mod emoji_label_widget;
 mod injector_app;
 mod process_selection_method;
 mod utils;
-
 
 fn load_system_fonts(ctx: &Context) {
     info!("Started loading system fonts3");
@@ -37,31 +38,22 @@ fn load_system_fonts(ctx: &Context) {
             .unwrap_or_else(|_| panic!("Failed to find the system font: {}", postscript_name));
 
         match font_handle {
-            Handle::Path { path, .. } => fs::read(path).expect("Failed to read the font file"),
+            Handle::Path { path, .. } => fs::read(path).expect("Failed to read the font file1"),
             Handle::Memory { bytes, .. } => bytes.to_vec(),
         }
     }
 
     // Load Bahnschrift font data
     let bahnschrift_font_data = load_font_data("Bahnschrift", FamilyName::SansSerif);
-    info!(
-        "Loaded Times New Roman font data with {} bytes",
-        bahnschrift_font_data.len()
-    );
+    info!("Loaded Times New Roman font data with {} bytes", bahnschrift_font_data.len());
 
     // Load Segoe UI Emoji font data
     let segoe_ui_emoji_font_data = load_font_data("Segoe UI Emoji", FamilyName::SansSerif);
-    info!(
-        "Loaded SimHei font data with {} bytes",
-        segoe_ui_emoji_font_data.len()
-    );
+    info!("Loaded SimHei font data with {} bytes", segoe_ui_emoji_font_data.len());
 
     // Load SimHei font data
     let simhei_font_data = load_font_data("SimHei", FamilyName::SansSerif);
-    info!(
-        "Loaded SimHei font data with {} bytes",
-        segoe_ui_emoji_font_data.len()
-    );
+    info!("Loaded SimHei font data with {} bytes", segoe_ui_emoji_font_data.len());
 
     // Convert the font data into FontData for egui
     let bahnscrift_font_data_obj = FontData::from_owned(bahnschrift_font_data);
@@ -70,15 +62,9 @@ fn load_system_fonts(ctx: &Context) {
 
     // Create FontDefinitions and add the font data
     let mut font_def = FontDefinitions::empty();
-    font_def
-        .font_data
-        .insert("Bahnschrift".to_string(), bahnscrift_font_data_obj);
-    font_def
-        .font_data
-        .insert("Segoe UI Emoji".to_string(), segoi_ui_font_data_obj);
-    font_def
-        .font_data
-        .insert("SimHei".to_string(), simhei_font_data_obj);
+    font_def.font_data.insert("Bahnschrift".to_string(), bahnscrift_font_data_obj);
+    font_def.font_data.insert("Segoe UI Emoji".to_string(), segoi_ui_font_data_obj);
+    font_def.font_data.insert("SimHei".to_string(), simhei_font_data_obj);
 
     if let Some(vec) = font_def.families.get_mut(&FontFamily::Proportional) {
         vec.push("Bahnschrift".to_owned());

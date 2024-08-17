@@ -4,11 +4,11 @@ use std::path::Path;
 use egui::{Ui, Vec2, Window};
 use egui_extras::{Column, TableBuilder};
 use obfstr::obfstr;
-use pelite::{FileMap, PeFile};
 use pelite::image::{
     IMAGE_FILE_32BIT_MACHINE, IMAGE_FILE_MACHINE_AMD64, IMAGE_FILE_MACHINE_I386,
     IMAGE_FILE_MACHINE_IA64,
 };
+use pelite::{FileMap, PeFile};
 use rfd::FileDialog;
 
 use crate::emoji_button_widget::EmojiButtonWidget;
@@ -31,13 +31,7 @@ impl DllInfo {
         dll_arch: String,
         index: usize,
     ) -> Self {
-        DllInfo {
-            switch,
-            dll_name,
-            dll_path,
-            dll_arch,
-            index,
-        }
+        DllInfo { switch, dll_name, dll_path, dll_arch, index }
     }
 }
 
@@ -121,10 +115,7 @@ pub fn enable_disable_dll(
     );
     if enable_disable_resp.clicked() {
         if let Some(selected_index) = *selected_row {
-            if let Some(dll) = dll_list_vector
-                .iter_mut()
-                .find(|dll| dll.index == selected_index)
-            {
+            if let Some(dll) = dll_list_vector.iter_mut().find(|dll| dll.index == selected_index) {
                 dll.switch = !dll.switch; // Toggle the switch state
             }
         }
@@ -141,9 +132,8 @@ pub fn open_file_dialog_and_add_dll(
     );
 
     if add_dll_resp.clicked() {
-        if let Some(path) = FileDialog::new()
-            .add_filter(obfstr!("DLL Files"), &[obfstr!("dll")])
-            .pick_file()
+        if let Some(path) =
+            FileDialog::new().add_filter(obfstr!("DLL Files"), &[obfstr!("dll")]).pick_file()
         {
             let file_name = path
                 .file_name()
