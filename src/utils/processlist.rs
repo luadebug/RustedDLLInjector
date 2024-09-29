@@ -19,8 +19,9 @@ pub fn get_process_list() -> Vec<Process> {
 }
 
 use std::ffi::c_void;
-
-use dinvoke_rs::dinvoke::{close_handle, nt_create_thread_ex};
+use dinvoke::{close_handle, nt_create_thread_ex};
+//use dinvoke_rs::dinvoke;
+//use dinvoke_rs::dinvoke::{close_handle, nt_create_thread_ex};
 use iced_x86::code_asm::{eax, CodeAssembler};
 use iced_x86::IcedError;
 use libmem::memory::{alloc_memory_ex, free_memory_ex};
@@ -59,9 +60,10 @@ fn build_code_x86_fix(
     );
     Ok(code)
 }
-
-use dinvoke_rs::data::{PsAttributeList, PVOID, THREAD_ALL_ACCESS};
-use dinvoke_rs::dinvoke::open_process;
+use dinvoke::open_process;
+use dinvoke_data::{PsAttributeList, PVOID, THREAD_ALL_ACCESS};
+//use dinvoke_rs::data::{PsAttributeList, PVOID, THREAD_ALL_ACCESS};
+//use dinvoke_rs::dinvoke::open_process;
 use windows::Wdk::Foundation::OBJECT_ATTRIBUTES;
 use windows::Win32::Foundation::HANDLE;
 use winsafe::prelude::*;

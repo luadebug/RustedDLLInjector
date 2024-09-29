@@ -1,3 +1,4 @@
+use egui::Response;
 use egui_twemoji::EmojiLabel;
 
 pub struct EmojiLabelWidget {
@@ -11,7 +12,7 @@ impl EmojiLabelWidget {
 }
 
 impl egui::Widget for EmojiLabelWidget {
-    fn ui(self, ui_: &mut egui::Ui) -> egui::Response {
+    fn ui(self, ui_: &mut egui::Ui) -> Response {
         let resp = self.label.show(ui_);
         // Ensure the cursor remains as an arrow when hovering over the label
         if resp.hovered() {
