@@ -1,6 +1,6 @@
 cargo-features = ["edition2024"]
 [package]
-name = "Null Injector"
+name = "NullInjector"
 version = "1.1.0"
 edition = "2024"
 

@@ -9,7 +9,7 @@ use libmem::Process;
 use obfstr::obfstr;
 
 // use tracing::{error, info};
-use crate::dll_info::{dll_list_buttons_column, DllInfo};
+use crate::dll_info::{DllInfo, dll_list_buttons_column};
 use crate::emoji_button_widget::EmojiButtonWidget;
 use crate::emoji_label_widget::EmojiLabelWidget;
 use crate::process_selection_method::ProcessSelectionMethod;
@@ -68,7 +68,7 @@ impl InjectorApp {
             if let Some(existing_process) = unique_processes.get_mut(&process.name as &str) {
                 if process.ppid < existing_process.ppid {
                     *existing_process = process; // Update with the process
-                                                 // having lower PPID
+                    // having lower PPID
                 }
             } else {
                 // If the process name is not found, insert it into the HashMap.
@@ -232,80 +232,89 @@ impl eframe::App for InjectorApp {
                             });
                         });
 
-                    TableBuilder::new(ui)
-                        .striped(true)
-                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Column::initial(200.0).at_least(200.0)) // First column: Label
-                        .column(Column::initial(100.0).at_least(100.0)) // Second column: Radio Button
-                        .column(Column::initial(100.0).at_least(100.0)) // Third column: ComboBox
-                        .body(|mut body| {
-                            body.row(18.0, |mut row| {
-                                // First column: Label
-                                row.col(|ui| {
-                                    let resp2 = ui.add(EmojiLabelWidget::new(obfstr!("⚙🆔 PID:\t\t\t\t\t\t")));
-                                    if resp2.hovered() && self.radio_button_proc_sel_meth == ByPID {
-                                        let process = &self.process_list[self.current_process_selected_index];
-                                        resp2.show_tooltip_text(format!(
-                                            "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
-                                            process.pid,
-                                            process.ppid,
-                                            process.arch,
-                                            process.bits,
-                                            process.start_time,
-                                            process.path,
-                                            process.name
-                                        ));
-                                    }
-                                });
+                    ui.push_id("InjectionSelectionByPIDMenuTable", |ui| {
+                        TableBuilder::new(ui)
+                            .striped(true)
+                            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                            .column(Column::initial(200.0).at_least(200.0)) // First column: Label
+                            .column(Column::initial(100.0).at_least(100.0)) // Second column: Radio Button
+                            .column(Column::initial(100.0).at_least(100.0)) // Third column: ComboBox
+                            .body(|mut body| {
 
-                                // Second column: Radio Button
-                                row.col(|ui| {
-                                    if ui.radio(self.radio_button_proc_sel_meth == ByPID, "").clicked() {
-                                        self.radio_button_proc_sel_meth = ByPID;
-                                    }
-                                });
 
-                                // Third column: ComboBox
-                                row.col(|ui| {
-                                    let cb2_resp = ComboBox::from_id_source(obfstr!("PIDListComboBox"))
-                                        .width(400.0)
-                                        .selected_text(&self.combo_box_pid)
-                                        .show_ui(ui, |ui| {
-                                            let mut filtered_processes: Vec<&Process> = self.filter_system_services_and_daemon_processes();
-                                            filtered_processes.sort_by_key(|process| process.pid);
+                                
+                                body.row(18.0, |mut row| {
+                                    // First column: Label
+                                    row.col(|ui| {
+                                        let resp2 = ui.add(EmojiLabelWidget::new(obfstr!("⚙🆔 PID:\t\t\t\t\t\t")));
+                                        if resp2.hovered() && self.radio_button_proc_sel_meth == ByPID {
+                                            let process = &self.process_list[self.current_process_selected_index];
+                                            resp2.show_tooltip_text(format!(
+                                                "PID: {:#?}\nPPID: {:#?}\nArchitecture: {:#?}\nBits: {:#?}\nStart Time: {:#?}\nPath:\n{:#?}\nName: {:#?}",
+                                                process.pid,
+                                                process.ppid,
+                                                process.arch,
+                                                process.bits,
+                                                process.start_time,
+                                                process.path,
+                                                process.name
+                                            ));
+                                        }
+                                    });
 
-                                            let mut new_selected_process_pid = None;
-                                            let mut new_selected_process_index = None;
+                                    // Second column: Radio Button
+                                    row.col(|ui| {
+                                        if ui.radio(self.radio_button_proc_sel_meth == ByPID, "").clicked() {
+                                            self.radio_button_proc_sel_meth = ByPID;
+                                        }
+                                    });
 
-                                            for process in &filtered_processes {
-                                                let process_pid = process.pid.to_string();
-                                                let selectable_text = format!("{}\t{}\t{}", process.pid, process.name, process.ppid);
+                                    // Third column: ComboBox
+                                    row.col(|ui| {
+                                        let cb2_resp = ComboBox::from_id_source(obfstr!("PIDListComboBox"))
+                                            .width(400.0)
+                                            .selected_text(&self.combo_box_pid)
+                                            .show_ui(ui, |ui| {
+                                                let mut filtered_processes: Vec<&Process> = self.filter_system_services_and_daemon_processes();
+                                                filtered_processes.sort_by_key(|process| process.pid);
 
-                                                if ui.selectable_value(
-                                                    &mut self.combo_box_pid.as_str(),
-                                                    process_pid.as_str(),
-                                                    selectable_text.as_str(),
-                                                ).clicked() && self.radio_button_proc_sel_meth == ByPID {
-                                                    new_selected_process_pid = Some(process_pid);
-                                                    new_selected_process_index = Some(self.process_list.iter().position(|x| x.pid == process.pid).unwrap());
+                                                let mut new_selected_process_pid = None;
+                                                let mut new_selected_process_index = None;
+
+                                                for process in &filtered_processes {
+                                                    let process_pid = process.pid.to_string();
+                                                    let selectable_text = format!("{}\t{}\t{}", process.pid, process.name, process.ppid);
+
+                                                    if ui.selectable_value(
+                                                        &mut self.combo_box_pid.as_str(),
+                                                        process_pid.as_str(),
+                                                        selectable_text.as_str(),
+                                                    ).clicked() && self.radio_button_proc_sel_meth == ByPID {
+                                                        new_selected_process_pid = Some(process_pid);
+                                                        new_selected_process_index = Some(self.process_list.iter().position(|x| x.pid == process.pid).unwrap());
+                                                    }
                                                 }
-                                            }
 
-                                            if let Some(pid) = new_selected_process_pid {
-                                                self.combo_box_pid = pid;
-                                            }
+                                                if let Some(pid) = new_selected_process_pid {
+                                                    self.combo_box_pid = pid;
+                                                }
 
-                                            if let Some(index) = new_selected_process_index {
-                                                self.current_process_selected_index = index;
-                                            }
-                                        }).response;
+                                                if let Some(index) = new_selected_process_index {
+                                                    self.current_process_selected_index = index;
+                                                }
+                                            }).response;
 
-                                    if cb2_resp.clicked_by(PointerButton::Primary) && self.radio_button_proc_sel_meth == ByPID {
-                                        self.process_list = get_process_list();
-                                    }
+                                        if cb2_resp.clicked_by(PointerButton::Primary) && self.radio_button_proc_sel_meth == ByPID {
+                                            self.process_list = get_process_list();
+                                        }
+                                    });
                                 });
                             });
-                        });
+                    });
+
+
+                    ui.push_id("InjectionSelectionByPIDInputMenuTable", |ui| {
+
                     TableBuilder::new(ui)
                         .striped(true)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -385,11 +394,14 @@ impl eframe::App for InjectorApp {
                                 });
                             });
                         });
+                    });
                     ui.horizontal(|ui| {
                         ui.label("Selected process :\t");
                         ui.label(format!("{:#?}", self.process_list[self.current_process_selected_index]));
                     });
-                    ui.horizontal(|ui| {
+
+                    ui.push_id("MainInjectionMenuTable", |ui| {
+                        ui.horizontal(|ui| {
                         TableBuilder::new(ui)
                             .striped(true)
                             .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -400,15 +412,20 @@ impl eframe::App for InjectorApp {
                                 body.row(15.0, |mut row| {
                                     // First column: Update Process List Button
                                     row.col(|ui| {
-                                        let emoji_button_update_process_list = EmojiButtonWidget::new(obfstr!("🔄📄\u{2699} Update process list"))
+                                        //ui.push_id("UpdateProcessListButton", |ui| {
+
+                                            let emoji_button_update_process_list = EmojiButtonWidget::new(obfstr!("🔄📄\u{2699} Update process list"))
                                             .min_size(Vec2::from(&[250.0, 10.0])); // Set the button size
 
-                                        let response = ui.add(emoji_button_update_process_list);
+                                            let response = ui.add(emoji_button_update_process_list);
 
-                                        if response.clicked() {
-                                            self.process_list = get_process_list();
-                                            println!("Emoji button with custom label was clicked! To update process list");
-                                        }
+                                            if response.clicked() {
+                                                self.process_list = get_process_list();
+                                                println!("Emoji button with custom label was clicked! To update process list");
+                                            }
+
+                                        //});
+
                                     });
                                     row.col(|ui| {
                                         ui.add_space(5.0f32);
@@ -438,6 +455,7 @@ impl eframe::App for InjectorApp {
                                     });
                                 });
                             });
+                        });
                     });
                 });
                 ui.separator();

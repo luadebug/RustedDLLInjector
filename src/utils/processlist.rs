@@ -1,6 +1,6 @@
 use std::{fs, ptr};
 
-use libmem::process::{enum_processes, Process};
+use libmem::process::{Process, enum_processes};
 use tracing::{error, info};
 
 // info
@@ -19,14 +19,15 @@ pub fn get_process_list() -> Vec<Process> {
 }
 
 use std::ffi::c_void;
+
 use dinvoke::{close_handle, nt_create_thread_ex};
-//use dinvoke_rs::dinvoke;
-//use dinvoke_rs::dinvoke::{close_handle, nt_create_thread_ex};
-use iced_x86::code_asm::{eax, CodeAssembler};
 use iced_x86::IcedError;
+// use dinvoke_rs::dinvoke;
+// use dinvoke_rs::dinvoke::{close_handle, nt_create_thread_ex};
+use iced_x86::code_asm::{CodeAssembler, eax};
 use libmem::memory::{alloc_memory_ex, free_memory_ex};
 use libmem::module::find_module_ex;
-use libmem::{load_module_ex, write_memory_ex, Arch, Prot};
+use libmem::{Arch, Prot, load_module_ex, write_memory_ex};
 use widestring::U16CString;
 
 fn build_code_x86_fix(
@@ -61,9 +62,9 @@ fn build_code_x86_fix(
     Ok(code)
 }
 use dinvoke::open_process;
-use dinvoke_data::{PsAttributeList, PVOID, THREAD_ALL_ACCESS};
-//use dinvoke_rs::data::{PsAttributeList, PVOID, THREAD_ALL_ACCESS};
-//use dinvoke_rs::dinvoke::open_process;
+use dinvoke_data::{PVOID, PsAttributeList, THREAD_ALL_ACCESS};
+// use dinvoke_rs::data::{PsAttributeList, PVOID, THREAD_ALL_ACCESS};
+// use dinvoke_rs::dinvoke::open_process;
 use windows::Wdk::Foundation::OBJECT_ATTRIBUTES;
 use windows::Win32::Foundation::HANDLE;
 use winsafe::prelude::*;
